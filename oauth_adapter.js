@@ -268,6 +268,12 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
         var nodeList = xmlDocument.getElementsByTagName('div');
         */
         var js = [];
+        js.push('var head = document.getElementsByTagName("head")[0];');                                                                                                                                      
+        js.push('var viewport = document.createElement("meta");');
+        js.push('viewport.setAttribute("name", "viewport");');
+        js.push('viewport.setAttribute("content", "height=device-height, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no");');
+        js.push('head.appendChild(viewport);');
+
         js.push('var nodeList = document.getElementsByTagName("div");');
         js.push('for(var i = 0, length = nodeList.length; i < length; ++i){');
         js.push('  var node = nodeList[i];');
