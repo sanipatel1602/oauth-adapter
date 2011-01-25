@@ -1,8 +1,8 @@
 Ti.include('lib/oauth_adapter.js');
 var oAuthAdapter = new OAuthAdapter(
-'YOUR CONSUMER SECRET',
-'YOUR CONSUMER KEY',
-'HMAC-SHA1'
+  'YOUR CONSUMER SECRET',
+  'YOUR CONSUMER KEY',
+  'HMAC-SHA1'
 );
 // load the access token for the service (if previously saved)
 oAuthAdapter.loadAccessToken('twitter');
@@ -10,13 +10,13 @@ oAuthAdapter.loadAccessToken('twitter');
 //OAuth if need.
 if (oAuthAdapter.isAuthorized() == false) 
 {
-var receivePin = function() {
-oAuthAdapter.getAccessToken('https://api.twitter.com/oauth/access_token'); 
-oAuthAdapter.saveAccessToken('twitter');
-};
-// show the authorization UI and call back the receive PIN function 
-oAuthAdapter.showAuthorizeUI('https://api.twitter.com/oauth/authorize?' +
-oAuthAdapter.getRequestToken('https://api.twitter.com/oauth/request_token'), receivePin);
+  var receivePin = function() {
+    oAuthAdapter.getAccessToken('https://api.twitter.com/oauth/access_token'); 
+    oAuthAdapter.saveAccessToken('twitter');
+  };
+  // show the authorization UI and call back the receive PIN function 
+  oAuthAdapter.showAuthorizeUI('https://api.twitter.com/oauth/authorize?' +
+  oAuthAdapter.getRequestToken('https://api.twitter.com/oauth/request_token'), receivePin);
 }
 
 //TWEET
@@ -46,3 +46,28 @@ oAuthAdapter.send({
 		}
 	}
 });
+
+// Google: OAuth for Installed Applications: http://code.google.com/intl/ja/apis/accounts/docs/OAuthForInstalledApps.html
+var adapter = new OAuthAdapter(
+  'anonymous',
+  'anonymous',
+  'HMAC-SHA1'
+);
+var _createMessage = adapter.createMessage;
+adapter.createMessage = function (){
+  var msg = _createMessage.apply(adapter, arguments);
+  msg.parameters.push(['scope', 'https://www.googleapis.com/auth/userinfo#email']);
+  msg.parameters.push(['xoauth_displayname', 'Hello World']);
+  msg.parameters.push(['btmpl', 'mobile']);
+  msg.parameters.push(['hl', 'ja']);
+  return msg;
+};
+
+adapter.loadAccessToken('google');
+if(!adapter.isAuthorized()){
+  var token = adapter.getRequestToken('https://www.google.com/accounts/OAuthGetRequestToken');
+  adapter.showAuthorizeUI('https://www.google.com/accounts/OAuthAuthorizeToken?' + token, function (){
+    adapter.getAccessToken('https://www.google.com/accounts/OAuthGetAccessToken');
+    adapter.saveAccessToken('google');
+  });
+}
