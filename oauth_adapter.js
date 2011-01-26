@@ -267,6 +267,27 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
         var xmlDocument = Ti.XML.parseString(e.source.html);
         var nodeList = xmlDocument.getElementsByTagName('div');
         */
+
+       var loc = e.source.evalJS('location.href');
+       // google verification code
+       if('https://www.google.com/accounts/OAuthAuthorizeToken' == loc){
+          var js = [];
+          js.push('document.title;');
+          var title = e.source.evalJS(js.join('\n'));
+          Titanium.API.debug('OAuthAuthorize: ' + title);
+
+          var m = title.match(/\[ov\:(\w+)\]/);
+          if(m && 0 < m.length){
+            pin = m[1];
+            if (receivePinCallback) {
+              setTimeout(receivePinCallback, 100);
+            }
+            destroyAuthorizeUI();
+          }
+          return ;
+        }
+
+        // twitter pin
         var js = [];
         js.push('var head = document.getElementsByTagName("head")[0];');                                                                                                                                      
         js.push('var viewport = document.createElement("meta");');

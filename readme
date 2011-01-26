@@ -57,6 +57,7 @@ var _createMessage = adapter.createMessage;
 adapter.createMessage = function (){
   var msg = _createMessage.apply(adapter, arguments);
   msg.parameters.push(['scope', 'https://www.googleapis.com/auth/userinfo#email']);
+  msg.parameters.push(['oauth_callback', 'oob']);
   msg.parameters.push(['xoauth_displayname', 'Hello World']);
   msg.parameters.push(['btmpl', 'mobile']);
   msg.parameters.push(['hl', 'ja']);
