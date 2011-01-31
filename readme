@@ -47,28 +47,43 @@ oAuthAdapter.send({
 	}
 });
 
+
 // Google: OAuth for Installed Applications: http://code.google.com/intl/ja/apis/accounts/docs/OAuthForInstalledApps.html
 var adapter = new OAuthAdapter(
   'anonymous',
   'anonymous',
   'HMAC-SHA1'
 );
-var _createMessage = adapter.createMessage;
-adapter.createMessage = function (){
-  var msg = _createMessage.apply(adapter, arguments);
-  msg.parameters.push(['scope', 'https://www.googleapis.com/auth/userinfo#email']);
-  msg.parameters.push(['oauth_callback', 'oob']);
-  msg.parameters.push(['xoauth_displayname', 'Hello World']);
-  msg.parameters.push(['btmpl', 'mobile']);
-  msg.parameters.push(['hl', 'ja']);
-  return msg;
-};
 
 adapter.loadAccessToken('google');
+
 if(!adapter.isAuthorized()){
+  var _createMessage = adapter.createMessage;
+  adapter.createMessage = function (){
+    var msg = _createMessage.apply(adapter, arguments);
+    msg.parameters.push(['scope', 'https://www.google.com/m8/feeds https://www.googleapis.com/auth/userinfo#email']);
+    msg.parameters.push(['oauth_callback', 'oob']);
+    msg.parameters.push(['xoauth_displayname', 'Hello World']);
+    msg.parameters.push(['btmpl', 'mobile']);
+    msg.parameters.push(['hl', 'ja']);
+    return msg;
+  };
   var token = adapter.getRequestToken('https://www.google.com/accounts/OAuthGetRequestToken');
   adapter.showAuthorizeUI('https://www.google.com/accounts/OAuthAuthorizeToken?' + token, function (){
     adapter.getAccessToken('https://www.google.com/accounts/OAuthGetAccessToken');
     adapter.saveAccessToken('google');
   });
 }
+adapter.send({
+  url: 'https://www.googleapis.com/userinfo/email',
+  method: 'GET',
+  parameters: [],
+  stickOAuthParam: true,
+  onSuccess: function (res){
+    Titanium.API.debug(res);
+  },
+  onError: function (){
+    Titanium.API.debug("error");
+  }
+});
+

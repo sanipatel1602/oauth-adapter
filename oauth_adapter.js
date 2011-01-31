@@ -272,6 +272,11 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
        // google verification code
        if('https://www.google.com/accounts/OAuthAuthorizeToken' == loc){
           var js = [];
+          js.push('var head = document.getElementsByTagName("head")[0];');
+          js.push('var viewport = document.createElement("meta");');
+          js.push('viewport.setAttribute("name", "viewport");');
+          js.push('viewport.setAttribute("content", "height=device-height, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no");');
+          js.push('head.appendChild(viewport);');
           js.push('document.title;');
           var title = e.source.evalJS(js.join('\n'));
           Titanium.API.debug('OAuthAuthorize: ' + title);
@@ -296,14 +301,16 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
         js.push('head.appendChild(viewport);');
 
         js.push('var nodeList = document.getElementsByTagName("div");');
+        js.push('var result = "";');
         js.push('for(var i = 0, length = nodeList.length; i < length; ++i){');
         js.push('  var node = nodeList[i];');
         js.push('  var id = node.attributes.getNamedItem("id");');
         js.push('  if(id && id.nodeValue == "oauth_pin"){');
-        js.push('    return node.text;');
+        js.push('    result = node.text;');
+        js.push('    break;');
         js.push('  }');
         js.push('}');
-        js.push('return "";');
+        js.push('result;');
         var result = e.source.evalJS(js.join('\n'));
         if('' != result){
           pin = result;
@@ -469,6 +476,16 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
             return url;
         }
     };
+    var makeHeaderParam = function(parameterMap){
+      var header = [];
+      for(var p in parameterMap){
+        if(parameterMap.hasOwnProperty(p)){
+          header.push(encodeURIComponent(p) + '="' + encodeURIComponent(parameterMap[p]) + '"');
+        }
+      }
+      header.sort();//(9.1.1.  Normalize Request Parameters)
+      return 'OAuth ' + header.join(', ');
+    };
 
     var send = function(params) {
         var pUrl            = params.url;
@@ -476,6 +493,7 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
         var pTitle          = params.title;
         var pMethod         = params.method || "POST";
         var resultByXML      = params.resultByXML || false;
+        var stickOAuthParam = params.stickOAuthParam || false;
 
         Ti.API.debug('Sending a message to the service at [' + pUrl + '] with the following params: ' + JSON.stringify(pParameters));
         if (accessToken == null || accessTokenSecret == null)
@@ -501,12 +519,14 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
             Ti.API.debug(pd + ': ' + parameterMap[pd]);
           }
         }
+
+        var client = Ti.Network.createHTTPClient();
         if (pMethod == "GET") {
-            pUrl = makeGetURL(pUrl, parameterMap);
-            parameterMap = null;
+            if(!stickOAuthParam){
+              pUrl = makeGetURL(pUrl, parameterMap);
+            }
             Ti.API.debug('url for GET:'+pUrl);
         }
-        var client = Ti.Network.createHTTPClient();
         client.onerror = function(e){
           Ti.API.debug(e);
           if(params.onError){
@@ -526,6 +546,17 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
           }
         };
         client.open(pMethod, pUrl, false);
+
+        if(stickOAuthParam){
+          var header = makeHeaderParam(parameterMap);
+
+          Ti.API.debug('header = ' + header);
+          client.setRequestHeader('Authorization', header);
+        }
+        if (pMethod == "GET") {
+          parameterMap = null;
+        }
+
         client.send(parameterMap);
 
         return null;
