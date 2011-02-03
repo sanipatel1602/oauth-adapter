@@ -320,16 +320,27 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
           destroyAuthorizeUI();
         }
     };
+    this.createWindow = function (){
+      var w = Ti.UI.createWindow({
+        top: 0,
+        modal: true,
+        fullscreen: true
+      });
+      w.open();
+      return w;
+    };
+    this.setupWindow = function(childContent){
+      if(null == window){
+        window = this.createWindow();
+      }
+      window.add(childContent);
+    };
 
     // shows the authorization UI
     this.showAuthorizeUI = function(pUrl, pReceivePinCallback)
     {
         receivePinCallback = pReceivePinCallback;
 
-        window = Ti.UI.createWindow({
-            modal: true,
-            fullscreen: true
-        });
         var transform = Ti.UI.create2DMatrix().scale(0);
         view = Ti.UI.createView({
             top: 5,
@@ -354,7 +365,6 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
             right: 12,
             height: 14
         });
-        window.open();
 
         webView = Ti.UI.createWebView({
             url: pUrl,
@@ -368,8 +378,8 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
         closeLabel.addEventListener('click', destroyAuthorizeUI);
         view.add(closeLabel);
 
-        window.add(view);
-
+        this.setupWindow(view);
+        
         var animation = Ti.UI.createAnimation();
         animation.transform = Ti.UI.create2DMatrix();
         animation.duration = 500;
@@ -487,6 +497,7 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
       return 'OAuth ' + header.join(', ');
     };
 
+    var self = this;
     var send = function(params) {
         var pUrl            = params.url;
         var pParameters     = params.parameters || [];
@@ -504,7 +515,7 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
         }
 
         accessor.tokenSecret = accessTokenSecret;
-        var message = this.createMessage(pUrl, pMethod);
+        var message = self.createMessage(pUrl, pMethod);
         message.parameters.push(['oauth_token', accessToken]);
         for (var p in pParameters) {
           if(pParameters.hasOwnProperty(p)){
