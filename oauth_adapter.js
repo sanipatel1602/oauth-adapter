@@ -137,7 +137,7 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
         Ti.API.debug('Loading access token for service [' + pService + '].');
 
         var file = Ti.Filesystem.getFile(Ti.Filesystem.applicationDataDirectory, pService + '.config');
-        if (file.exists == false) {
+        if (file.exists() == false) {
             return;
         }
 
