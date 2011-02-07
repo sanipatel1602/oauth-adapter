@@ -48,13 +48,16 @@ oAuthAdapter.send({
 });
 
 
+//
+// new feature
+//
+
 // Google: OAuth for Installed Applications: http://code.google.com/intl/ja/apis/accounts/docs/OAuthForInstalledApps.html
 var adapter = new OAuthAdapter(
   'anonymous',
   'anonymous',
   'HMAC-SHA1'
 );
-
 adapter.loadAccessToken('google');
 
 if(!adapter.isAuthorized()){
@@ -68,10 +71,22 @@ if(!adapter.isAuthorized()){
     msg.parameters.push(['hl', 'ja']);
     return msg;
   };
-  var token = adapter.getRequestToken('https://www.google.com/accounts/OAuthGetRequestToken');
-  adapter.showAuthorizeUI('https://www.google.com/accounts/OAuthAuthorizeToken?' + token, function (){
-    adapter.getAccessToken('https://www.google.com/accounts/OAuthGetAccessToken');
-    adapter.saveAccessToken('google');
+  adapter.getRequestToken('https://www.google.com/accounts/OAuthGetRequestToken', function(token){
+    adapter.showAuthorizeUI('https://www.google.com/accounts/OAuthAuthorizeToken?' + token, function (){
+      var indicator = Titanium.UI.createActivityIndicator({
+        message: 'processing...',
+        bottom: 10,
+        height: 50,
+        width: 10,
+        style: Titanium.UI.iPhone.ActivityIndicatorStyle.PLAIN
+      });
+      indicator.show();
+
+      adapter.getAccessToken('https://www.google.com/accounts/OAuthGetAccessToken', function (tk){
+        adapter.saveAccessToken('google');
+        indicator.hide();
+      });
+    });
   });
 }
 adapter.send({
