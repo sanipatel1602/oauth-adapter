@@ -57,31 +57,6 @@
      oAuthAdapter.showAuthorizeUI('https://api.twitter.com/oauth/authorize?' + oAuthAdapter.getRequestToken('https://api.twitter.com/oauth/request_token'), receivePin);
  }
 
- // Google: OAuth for Installed Applications: http://code.google.com/intl/ja/apis/accounts/docs/OAuthForInstalledApps.html
- var adapter = new OAuthAdapter(
-   'anonymous',
-   'anonymous',
-   'HMAC-SHA1'
- );
- var _createMessage = adapter.createMessage;
- adapter.createMessage = function (){
-   var msg = _createMessage.apply(adapter, arguments);
-   msg.parameters.push(['scope', 'https://www.googleapis.com/auth/userinfo#email']);
-   msg.parameters.push(['xoauth_displayname', 'Hello World']);
-   msg.parameters.push(['btmpl', 'mobile']);
-   msg.parameters.push(['hl', 'ja']);
-   return msg;
- };
-
- adapter.loadAccessToken('google');
- if(!adapter.isAuthorized()){
-   var token = adapter.getRequestToken('https://www.google.com/accounts/OAuthGetRequestToken');
-   adapter.showAuthorizeUI('https://www.google.com/accounts/OAuthAuthorizeToken?' + token, function (){
-     adapter.getAccessToken('https://www.google.com/accounts/OAuthGetAccessToken');
-     adapter.saveAccessToken('google');
-   });
- } 
-
  */
 /*
  * The Adapter needs 2 external libraries (oauth.js, sha1.js) hosted at
@@ -89,12 +64,9 @@
  *
  * Save them locally in a lib subfolder
  */
-Ti.include('lib/sha1.js');
-Ti.include('lib/oauth.js');
 
 // create an OAuthAdapter instance
-var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
-{
+var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod){
   
   Ti.API.info('*********************************************');
   Ti.API.info('If you like the OAuth Adapter, consider donating at');
@@ -132,12 +104,46 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
     var webView = null;
     var receivePinCallback = null;
 
-    this.loadAccessToken = function(pService)
-    {
+    var HttpClientWrapper = function (){
+      this.httpMethod = 'POST';
+      this.requestURL = '';
+      this.async = true;
+    };
+    HttpClientWrapper.prototype.open = function(method, url, async){
+      this.httpMethod = method;
+      this.requestURL = url;
+      if(async === false){
+        this.async = false;
+      }
+    };
+    HttpClientWrapper.prototype.send = function(parameters, success, failure){
+      var client = Ti.Network.createHTTPClient();
+      client.onload = function (){
+        return success(this);
+      };
+      client.onerror = failure;
+
+      client.open(this.httpMethod, this.requestURL, this.async);
+      if(/android/i.test(Titanium.Platform.osname)){
+        var post = [];
+        for(var p in parameters){
+          if(parameters.hasOwnProperty(p)){
+            post.push(encodeURIComponent(p) + '=' + encodeURIComponent(parameters[p]));
+          }
+        }
+        return client.send(post.join('&'));
+      }
+      return client.send(parameters);
+    };
+    var createHttpClient = function (){
+      return new HttpClientWrapper();
+    };
+
+    this.loadAccessToken = function(pService){
         Ti.API.debug('Loading access token for service [' + pService + '].');
 
         var file = Ti.Filesystem.getFile(Ti.Filesystem.applicationDataDirectory, pService + '.config');
-        if (file.exists() == false) {
+        if (!file.exists()) {
             return;
         }
 
@@ -146,12 +152,9 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
             return;
         }
 
-        try
-        {
+        try {
             var config = JSON.parse(contents.text);
-        }
-        catch(ex)
-        {
+        } catch(ex) {
             return;
         }
         if (config.accessToken) {
@@ -159,35 +162,30 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
         }
         if (config.accessTokenSecret) {
             accessTokenSecret = config.accessTokenSecret;
-          }
+        }
 
         Ti.API.debug('Loading access token: done [accessToken:' + accessToken + '][accessTokenSecret:' + accessTokenSecret + '].');
     };
-    this.saveAccessToken = function(pService)
-    {
+    this.saveAccessToken = function(pService){
         Ti.API.debug('Saving access token [' + pService + '].');
         var file = Ti.Filesystem.getFile(Ti.Filesystem.applicationDataDirectory, pService + '.config');
         if (file == null) {
             file = Ti.Filesystem.createFile(Ti.Filesystem.applicationDataDirectory, pService + '.config');
         }
-        file.write(JSON.stringify(
-        {
+        file.write(JSON.stringify({
             accessToken: accessToken,
             accessTokenSecret: accessTokenSecret
-        }
-        ));
+        }));
         Ti.API.debug('Saving access token: done.');
     };
 
     // will tell if the consumer is authorized
-    this.isAuthorized = function()
-    {
+    this.isAuthorized = function(){
         return ! (accessToken == null || accessTokenSecret == null);
     };
 
     // creates a message to send to the service
-    this.createMessage = function(pUrl, method)
-    {
+    this.createMessage = function(pUrl, method){
         var message = {
             action: pUrl ,
             method: (method) ? method : 'POST' ,
@@ -204,43 +202,40 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
     };
 
     // requests a requet token with the given Url
-    this.getRequestToken = function(pUrl)
-    {
+    this.getRequestToken = function(pUrl, callback){
         accessor.tokenSecret = '';
 
         var message = this.createMessage(pUrl);
         OAuth.setTimestampAndNonce(message);
         OAuth.SignatureMethod.sign(message, accessor);
 
-        var client = Ti.Network.createHTTPClient();
-        client.open('POST', pUrl, false);
-        client.send(OAuth.getParameterMap(message.parameters));
+        var client = createHttpClient();
+        client.open('POST', pUrl);
+        client.send(OAuth.getParameterMap(message.parameters), function (http){
+          var text = http.responseText;
+          Ti.API.debug('request token got the following response: ' + text);
 
-        var responseParams = OAuth.getParameterMap(client.responseText);
-        requestToken = responseParams.oauth_token;
-        requestTokenSecret = responseParams.oauth_token_secret;
-
-        Ti.API.debug('request token got the following response: ' + client.responseText);
-
-        return client.responseText;
+          var responseParams = OAuth.getParameterMap(text);
+          requestToken = responseParams.oauth_token;
+          requestTokenSecret = responseParams.oauth_token_secret;
+          return callback(text);
+        });
     };
 
     // unloads the UI used to have the user authorize the application
-    var destroyAuthorizeUI = function()
-    {
+    var destroyAuthorizeUI = function(){
         Ti.API.debug('destroyAuthorizeUI');
         // if the window doesn't exist, exit
         if (window == null) {
             return;
-          }
+        }
 
         // remove the UI
-        try
-        {
+        try {
           Ti.API.debug('destroyAuthorizeUI:webView.removeEventListener');
-            webView.removeEventListener('load', authorizeUICallback);
+          webView.removeEventListener('load', this.authorizeUICallback);
           Ti.API.debug('destroyAuthorizeUI:window.close()');
-            window.hide();
+          window.hide();
       //          Ti.API.debug('destroyAuthorizeUI:window.remove(view)');
       // window.remove(view);
       //          Ti.API.debug('destroyAuthorizeUI:view.remove(webView)');
@@ -249,69 +244,66 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
       //          webView = null;
       //             view = null;
       //             window = null;
-        }
-        catch(ex)
-        {
-            Ti.API.debug('Cannot destroy the authorize UI. Ignoring.');
+        } catch(ex) {
+          Ti.API.debug('Cannot destroy the authorize UI. Ignoring.');
         }
     };
 
     // looks for the PIN everytime the user clicks on the WebView to authorize the APP
     // currently works with TWITTER
-    var authorizeUICallback = function(e)
-    {
-        Ti.API.debug('authorizeUILoaded');
+    this.authorizeUICallback = function(e){
+      Ti.API.debug('authorizeUILoaded');
+      // invalid HTML source occured exception to parseString, browser evalJS call
+      /*
+      var xmlDocument = Ti.XML.parseString(e.source.html);
+      var nodeList = xmlDocument.getElementsByTagName('div');
+      */
 
-        // invalid HTML source occured exception to parseString, browser evalJS call
-        /*
-        var xmlDocument = Ti.XML.parseString(e.source.html);
-        var nodeList = xmlDocument.getElementsByTagName('div');
-        */
+      var browser = e.source;
+      var viewport = [];
+      viewport.push('(function (){');
+      viewport.push('  var head = document.getElementsByTagName("head")[0];');
+      viewport.push('  var viewport = document.createElement("meta");');
+      viewport.push('  viewport.setAttribute("name", "viewport");');
+      viewport.push('  viewport.setAttribute("content", "height=device-height, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no");');
+      viewport.push('  head.appendChild(viewport);');
+      viewport.push('})()');
+      browser.evalJS(viewport.join('\n'));
 
-       var loc = e.source.evalJS('location.href');
-       // google verification code
-       if('https://www.google.com/accounts/OAuthAuthorizeToken' == loc){
-          var js = [];
-          js.push('var head = document.getElementsByTagName("head")[0];');
-          js.push('var viewport = document.createElement("meta");');
-          js.push('viewport.setAttribute("name", "viewport");');
-          js.push('viewport.setAttribute("content", "height=device-height, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no");');
-          js.push('head.appendChild(viewport);');
-          js.push('document.title;');
-          var title = e.source.evalJS(js.join('\n'));
-          Titanium.API.debug('OAuthAuthorize: ' + title);
+      var loc = browser.evalJS('(function (){return location.href})()');
+      Titanium.API.debug('webView location: ' + loc);
 
-          var m = title.match(/\[ov\:(\w+)\]/);
-          if(m && 0 < m.length){
-            pin = m[1];
-            if (receivePinCallback) {
-              setTimeout(receivePinCallback, 100);
-            }
-            destroyAuthorizeUI();
+      //
+      // TODO: switch if location: service provider pin read
+      //
+      if('https://www.google.com/accounts/OAuthAuthorizeToken' == loc){
+        var title = browser.evalJS('(function (){return document.title})()');
+        Titanium.API.debug('OAuthAuthorize: ' + title);
+
+        var m = title.match(/\[ov\:(.*)\]/);
+        if(m && 0 < m.length){
+          pin = m[1];
+          if (receivePinCallback) {
+            setTimeout(receivePinCallback, 100);
           }
-          return ;
         }
-
-        // twitter pin
+        return destroyAuthorizeUI();
+      }
+      if('https://api.twitter.com/oauth/authorize' == loc){
         var js = [];
-        js.push('var head = document.getElementsByTagName("head")[0];');                                                                                                                                      
-        js.push('var viewport = document.createElement("meta");');
-        js.push('viewport.setAttribute("name", "viewport");');
-        js.push('viewport.setAttribute("content", "height=device-height, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no");');
-        js.push('head.appendChild(viewport);');
-
-        js.push('var nodeList = document.getElementsByTagName("div");');
-        js.push('var result = "";');
-        js.push('for(var i = 0, length = nodeList.length; i < length; ++i){');
-        js.push('  var node = nodeList[i];');
-        js.push('  var id = node.attributes.getNamedItem("id");');
-        js.push('  if(id && id.nodeValue == "oauth_pin"){');
-        js.push('    result = node.text;');
-        js.push('    break;');
+        js.push('(function (){');
+        js.push('  var nodeList = document.getElementsByTagName("div");');
+        js.push('  for(var i = 0, length = nodeList.length; i < length; ++i){');
+        js.push('    var node = nodeList[i];');
+        js.push('    var id = node.attributes.getNamedItem("id");');
+        js.push('    if(id && id.nodeValue == "oauth_pin"){');
+        js.push('      return node.text;');
+        js.push('    }');
         js.push('  }');
-        js.push('}');
-        js.push('result;');
-        var result = e.source.evalJS(js.join('\n'));
+        js.push('  return "";');
+        js.push('})()');
+
+        var result = browser.evalJS(js.join('\n'));
         if('' != result){
           pin = result;
           if (receivePinCallback) {
@@ -319,7 +311,9 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
           }
           destroyAuthorizeUI();
         }
+      }
     };
+
     this.createWindow = function (){
       var w = Ti.UI.createWindow({
         top: 0,
@@ -337,10 +331,11 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
     };
 
     // shows the authorization UI
-    this.showAuthorizeUI = function(pUrl, pReceivePinCallback)
-    {
+    this.showAuthorizeUI = function(pUrl, pReceivePinCallback){
+        Titanium.API.debug('showAuthroizeUI');
         receivePinCallback = pReceivePinCallback;
 
+        /*
         var transform = Ti.UI.create2DMatrix().scale(0);
         view = Ti.UI.createView({
             top: 5,
@@ -354,40 +349,34 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
             zIndex: -1,
             transform: transform
         });
-        closeLabel = Ti.UI.createLabel({
-            textAlign: 'right',
-            font: {
-                fontWeight: 'bold',
-                fontSize: '12pt'
-            },
-            text: '(X)',
-            top: 10,
-            right: 12,
-            height: 14
-        });
+        */
 
         webView = Ti.UI.createWebView({
             url: pUrl,
-            autoDetect: [Ti.UI.AUTODETECT_NONE],
-            scalesPageToFit: true
+            scalesPageToFit: true,
+            touchEnabled: true,
+            top: 0,
+            border: 10,
+            backgroundColor: 'white',
+            borderColor: '#aaa',
+            borderRadius: 20,
+            borderWidth: 5, 
         });
-        Ti.API.debug('Setting:['+Ti.UI.AUTODETECT_NONE+']');
-        webView.addEventListener('load', authorizeUICallback);
-        view.add(webView);
 
-        closeLabel.addEventListener('click', destroyAuthorizeUI);
-        view.add(closeLabel);
+        webView.addEventListener('load', this.authorizeUICallback);
+        //view.add(webView);
 
-        this.setupWindow(view);
-        
+        this.setupWindow(webView);
+
+        /*
         var animation = Ti.UI.createAnimation();
         animation.transform = Ti.UI.create2DMatrix();
         animation.duration = 500;
         view.animate(animation);
+        */
     };
 
-    this.getAccessToken = function(pUrl)
-    {
+    this.getAccessToken = function(pUrl, callback){
         accessor.tokenSecret = requestTokenSecret;
 
         var message = this.createMessage(pUrl);
@@ -404,23 +393,23 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
           }
         }
 
-        var client = Ti.Network.createHTTPClient();
-        client.open('POST', pUrl, false);
-        client.send(parameterMap);
+        var client = createHttpClient();
+        client.open('POST', pUrl);
+        client.send(parameterMap, function(http){
+          var text = http.responseText;
+          Ti.API.debug('*** get access token, Response: ' + text);
 
-        var responseParams = OAuth.getParameterMap(client.responseText);
-        accessToken = responseParams.oauth_token;
-        accessTokenSecret = responseParams.oauth_token_secret;
+          var responseParams = OAuth.getParameterMap(text);
+          accessToken = responseParams.oauth_token;
+          accessTokenSecret = responseParams.oauth_token_secret;
 
-        Ti.API.debug('*** get access token, Response: ' + client.responseText);
+          processQueue();
 
-        processQueue();
-
-        return client.responseText;
+          return callback(text);
+        });
     };
 
-    var processQueue = function()
-    {
+    var processQueue = function(){
         Ti.API.debug('Processing queue.');
         while ((q = actionsQueue.shift()) != null){
             send(q);
@@ -428,23 +417,12 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
 
         Ti.API.debug('Processing queue: done.');
     };
-    var oauthParams = "OAuth realm,oauth_version,oauth_consumer_key,oauth_nonce,oauth_signature,oauth_signature_method,oauth_timestamp,oauth_token".split(',');
-    var makeAuthorizationHeaderString = function(params) {
-        var str = ''; 
-        for (var i = 0, len = oauthParams.length; i < len ; i++) {
-            var key = oauthParams[i];
-            if (params[key] != undefined) {
-                str += key + '="' + encodeURIComponent(params[key]) + '",';
-            }
-        }
-        Ti.API.debug('authorization header string : ' + str);
-        return str;
-    };
+    var oauthParams = 'OAuth realm,oauth_version,oauth_consumer_key,oauth_nonce,oauth_signature,oauth_signature_method,oauth_timestamp,oauth_token'.split(',');
 
     var removeOAuthParams = function(parameters) {
         var checkString = oauthParams.join(',') + ',';
         for (var p in parameters) {
-            if (checkString.indexOf(p + ",") >= 0) {
+            if (checkString.indexOf(p + ',') >= 0) {
               delete parameters[p];
             }
         }
@@ -456,8 +434,8 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
         var newParameters = [];
         for (var i = 0 , len = parameters.length; i < len ; i++) {
            var item = parameters[i];
-           if (checkString.indexOf(item[0] + ",") < 0) {
-                query.push(encodeURIComponent(item[0]) + "=" + encodeURIComponent(item[1])); 
+           if (checkString.indexOf(item[0] + ',') < 0) {
+               query.push(encodeURIComponent(item[0]) + '=' + encodeURIComponent(item[1])); 
            } else {
                newParameters.push(item);
            }
@@ -466,9 +444,8 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
         if (query.length) {
             query = query.join('&');
             return [url + ((url.indexOf('?') >= 0) ? '&' : '?') + query, parameters];
-        } else {
-            return [url, parameters];
         }
+        return [url, parameters];
     };
     var makeGetURL = function(url, parameterMap) {
         var query = [];
@@ -482,9 +459,8 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
         if (query.length) {
             query = query.join('&');
             return url + ((url.indexOf('?') >= 0) ? '&' : '?') + query;
-        } else {
-            return url;
         }
+        return url;
     };
     var makeHeaderParam = function(parameterMap){
       var header = [];
@@ -502,7 +478,7 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
         var pUrl            = params.url;
         var pParameters     = params.parameters || [];
         var pTitle          = params.title;
-        var pMethod         = params.method || "POST";
+        var pMethod         = params.method || 'POST';
         var resultByXML      = params.resultByXML || false;
         var stickOAuthParam = params.stickOAuthParam || false;
 
@@ -532,11 +508,11 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
         }
 
         var client = Ti.Network.createHTTPClient();
-        if (pMethod == "GET") {
+        if (pMethod == 'GET') {
             if(!stickOAuthParam){
               pUrl = makeGetURL(pUrl, parameterMap);
             }
-            Ti.API.debug('url for GET:'+pUrl);
+            Ti.API.debug('url for GET:' + pUrl);
         }
         client.onerror = function(e){
           Ti.API.debug(e);
@@ -546,7 +522,7 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
         };
         client.onload = function(){
           Ti.API.debug('*** sendStatus, Response: [' + client.status + '] ' + client.responseText);
-          if ((""+client.status).match(/^20[0-9]/)) {
+          if (('' + client.status).match(/^20[0-9]/)) {
             if(params.onSuccess){
               params.onSuccess(client.responseText);
             }
@@ -564,7 +540,7 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod)
           Ti.API.debug('header = ' + header);
           client.setRequestHeader('Authorization', header);
         }
-        if (pMethod == "GET") {
+        if (pMethod == 'GET') {
           parameterMap = null;
         }
 
