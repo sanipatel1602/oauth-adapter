@@ -276,7 +276,7 @@ var OAuthAdapter = function(pConsumerSecret, pConsumerKey, pSignatureMethod){
       //
       // TODO: switch if location: service provider pin read
       //
-      if('https://www.google.com/accounts/OAuthAuthorizeToken' == loc){
+      if(/https\:\/\/www\.google\.com\/accounts\/(.+\/)?OAuthAuthorizeToken/.test(loc)){
         var title = browser.evalJS('(function (){return document.title})()');
         Titanium.API.debug('OAuthAuthorize: ' + title);
 
