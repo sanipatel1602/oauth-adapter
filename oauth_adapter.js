@@ -39,23 +39,7 @@
  // load the access token for the service (if previously saved)
  oAuthAdapter.loadAccessToken('twitter');
 
- // consume a service API - in this case the status update by Twitter
- oAuthAdapter.send('https://api.twitter.com/1/statuses/update.json', [['status','Hey @ziodave, I managed to use the #oauth adapter for @titanium consuming @twitterapi']],'Twitter','Tweet published.','Tweet not published.');
-
- // if the client is not authorized, ask for authorization. the previous tweet will be sent automatically after authorization
- if (oAuthAdapter.isAuthorized() == false)
- {
-   // this function will be called as soon as the application is authorized
-     var receivePin = function() {
-     // get the access token with the provided pin/oauth_verifier
-         oAuthAdapter.getAccessToken('https://api.twitter.com/oauth/access_token');
-     // save the access token
-         oAuthAdapter.saveAccessToken('twitter');
-     };
-
-   // show the authorization UI and call back the receive PIN function
-     oAuthAdapter.showAuthorizeUI('https://api.twitter.com/oauth/authorize?' + oAuthAdapter.getRequestToken('https://api.twitter.com/oauth/request_token'), receivePin);
- }
+ // Please refer to the README for new usage and dependencies 
 
  */
 /*
@@ -65,13 +49,19 @@
  * Save them locally in a lib subfolder
  */
 
+// Modifications by Ketan Majmudar Spirit Quest (http://www.spiritquest.co.uk 2011)
+// Github Repo: https://github.com/stereoket/oauth-adapter
+// Have hacked this from multiple forks from the original I have also worked thorugh to attempt to make this android comaptible, there is more work to do, distilling this down into something that is cross compatible - if you would like to donate to the time spent making this compatible you can donate to http://goo.gl/h4UKN (pay pal link) or via my website http://www.stereoartist.com/projects.php
+
+
 
 // create an OAuthAdapter instance
 var OAuthAdapterNew = function(pConsumerSecret, pConsumerKey, pSignatureMethod){
   
   Ti.API.info('*********************************************');
   Ti.API.info('If you like the OAuth Adapter, consider donating at');
-  Ti.API.info('https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=T5HUU4J5EQTJU&lc=IT&item_name=OAuth%20Adapter&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donate_LG%2egif%3aNonHosted');
+  Ti.API.info('*** http://goo.gl/h4UKN (pay pal link) ***');
+  Ti.API.info('(also please consider daonting to David, link at top of source)');
   Ti.API.info('*********************************************'); 
 
     // will hold the consumer secret and consumer key as provided by the caller
@@ -280,7 +270,7 @@ var OAuthAdapterNew = function(pConsumerSecret, pConsumerKey, pSignatureMethod){
           Ti.API.debug('destroyAuthorizeUI:webView.removeEventListener');
           webView.removeEventListener('load', authorizeUICallback);
           Ti.API.debug('destroyAuthorizeUI:window.close()');
-          window.hide();
+			window.hide();
         } catch(ex) {
           Ti.API.debug('Cannot destroy the authorize UI. Ignoring.');
         }
@@ -319,6 +309,7 @@ var OAuthAdapterNew = function(pConsumerSecret, pConsumerKey, pSignatureMethod){
             setTimeout(receivePinCallback, 100);
           }
         }
+		Ti.API.debug(Ti.UI.currentWindow.name);
         return destroyAuthorizeUI();
       }
       if('https://api.twitter.com/oauth/authorize' == loc){
@@ -331,7 +322,12 @@ var OAuthAdapterNew = function(pConsumerSecret, pConsumerKey, pSignatureMethod){
 				Ti.API.debug('PIN: '+ pin);
 
 	        if(pin != ''){
-				if (receivePinCallback) setTimeout(receivePinCallback, 100);
+				if (receivePinCallback) setTimeout(receivePinCallback, 300);
+				var osname = Ti.Platform.osname; // cache information
+				if(osname === 'android') {
+					window.close();
+					Ti.API.debug('Android Window destruction');
+				}
 	        	destroyAuthorizeUI();
 	        }
 	      }
@@ -340,7 +336,7 @@ var OAuthAdapterNew = function(pConsumerSecret, pConsumerKey, pSignatureMethod){
     this.createWindow = function (){
       var w = Ti.UI.createWindow({
         top: 0,
-        modal: true,
+        // modal: true,
         fullscreen: true
       });
       w.open();
@@ -376,29 +372,20 @@ var OAuthAdapterNew = function(pConsumerSecret, pConsumerKey, pSignatureMethod){
 
         webView = Ti.UI.createWebView({
             url: pUrl,
-			width: 310,
-            height: 400,
+			width: '100%',
+            height: '100%',
             scalesPageToFit: true,
             touchEnabled: true,
-            top: '20px',
+            top: 0,
             border: 10,
-            backgroundColor: 'white',
-            borderColor: '#aaa',
-            borderRadius: 20,
-            borderWidth: 5, 
+            // backgroundColor: 'white',
+            // borderColor: '#aaa',
+            // borderRadius: 20,
+            // borderWidth: 5, 
         });
 
         webView.addEventListener('load', authorizeUICallback);
-        //view.add(webView);
-
         this.setupWindow(webView);
-
-        /*
-        var animation = Ti.UI.createAnimation();
-        animation.transform = Ti.UI.create2DMatrix();
-        animation.duration = 500;
-        view.animate(animation);
-        */
     };
 
     this.getAccessToken = function(params){
@@ -563,7 +550,7 @@ Ti.API.debug('access Tokens: ' + accessToken + ':' + accessTokenSecret);
         }
 		var client = Ti.Network.createHTTPClient();
 		Ti.API.debug('Network client setup');
-		client.setRequestHeader('Content-Type',"application/x-www-form-urlencoded");
+		
         client.onerror = function(e){
 	Ti.API.debug('Error Found');
           Ti.API.debug(e);
@@ -598,8 +585,10 @@ Ti.API.debug('access Tokens: ' + accessToken + ':' + accessTokenSecret);
 
           Ti.API.debug('header = ' + header);
           client.setRequestHeader('Authorization', header);
-        }
-
+        } else {
+		client.setRequestHeader('Content-Type',"application/x-www-form-urlencoded");
+		}
+		 
         client.send();
 		Ti.API.debug('Request Sent');
         return client.responseText;

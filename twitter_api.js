@@ -4,11 +4,13 @@ var oa={};
 	oa.consumerSecret = 'xxxxx';
 	oa.consumerKey = 'xxxxx';
 	
-	oa.oAuthAdapter = new OAuthAdapterNew(
-	 oa.consumerSecret,
-	 oa.consumerKey,
-	 'HMAC-SHA1');
+	
 })();
+
+oa.oAuthAdapter = new OAuthAdapterNew(
+ oa.consumerSecret,
+ oa.consumerKey,
+ 'HMAC-SHA1');
 
 // load the access token for the service (if previously saved)
  oa.oAuthAdapter.loadAccessToken('twitter');
@@ -34,6 +36,7 @@ var oa={};
 
 	accessor.tokenSecret = '';
     var message = oa.oAuthAdapter.createMessage('https://api.twitter.com/oauth/request_token', 'POST');
+Ti.API.info('message is '+ message);
 	OAuth.setTimestampAndNonce(message);
 	OAuth.setParameter(message, "oauth_timestamp", OAuth.timestamp());
 	OAuth.SignatureMethod.sign(message, accessor);
@@ -43,26 +46,30 @@ var oa={};
 
 	client.onload = function() {
 	try {
-	  var responseParams = OAuth.getParameterMap(client.responseText);
-	   requestToken = responseParams.oauth_token;
-	   requestTokenSecret = responseParams.oauth_token_secret;
-		Ti.API.debug(client.readyState);
-		Ti.API.debug(client.status);
-		this.token =  client.responseText;
+		oa.authTokens =  client.responseText;
+		var responseParams = OAuth.getParameterMap(oa.authTokens);
+		requestToken = responseParams.oauth_token;
+		requestTokenSecret = responseParams.oauth_token_secret;
+		Ti.API.debug('Ready State: '+client.readyState);
+		Ti.API.debug('Status: '+client.status);
+		Ti.API.debug('Reponse text: '+ oa.authTokens);
+		setTimeout(function()
+		{
+			Ti.API.debug(oa.authTokens);
+
+			// Ti.API.info('Request token from twitter.js settings: ' + client.responseText);
+		    oa.oAuthAdapter.showAuthorizeUI('https://api.twitter.com/oauth/authorize?' + oa.authTokens, receivePin);
+		},4000);
+		
 		} catch(e){
 			alert(E);
 		}
 	};
+	Ti.API.debug(finalUrl+ ' Is the finalURL for auth step 1');
     client.open('POST', finalUrl, false);
 	client.setRequestHeader('X-Requested-With',null);
 	// client.setTimeout(3000);
     client.send();	
-	var requestTokens = client.responseText;
 	// have to use a settimeout function to allow ANDROID to get the return value to pass onto the next function.
-	setTimeout(function()
-	{
-		Ti.API.debug('Variable: '+ requestTokens);
-		Ti.API.info('Request token from twitter.js settings: ' + client.responseText);
-	    oa.oAuthAdapter.showAuthorizeUI('https://api.twitter.com/oauth/authorize?' + client.responseText, receivePin);
-	},4000);
+	
 }
