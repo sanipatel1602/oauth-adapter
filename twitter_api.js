@@ -1,8 +1,8 @@
 // namespace created for issues with android in the initial oAuth process, need to refactor all code into namespace for all twitter api calls.
 var oa={};
 (function(){
-	oa.consumerSecret = 'hbwxIfKJxtRjDoVhWx4EcU0a5Kyd4DJYKVrwhsYuPo';
-	oa.consumerKey = 'iXweb1OgfJ7MxBJVEO7EQ';
+	oa.consumerSecret = 'xxxxx';
+	oa.consumerKey = 'xxxxx';
 	
 	oa.oAuthAdapter = new OAuthAdapterNew(
 	 oa.consumerSecret,
