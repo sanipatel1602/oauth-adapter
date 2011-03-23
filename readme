@@ -1,104 +1,19 @@
-Ti.include('lib/oauth_adapter.js');
-var oAuthAdapter = new OAuthAdapter(
-  'YOUR CONSUMER SECRET',
-  'YOUR CONSUMER KEY',
-  'HMAC-SHA1'
-);
-// load the access token for the service (if previously saved)
-oAuthAdapter.loadAccessToken('twitter');
+// Twitter API instructions only
 
-//OAuth if need.
-if (oAuthAdapter.isAuthorized() == false) 
-{
-  var receivePin = function() {
-    oAuthAdapter.getAccessToken('https://api.twitter.com/oauth/access_token'); 
-    oAuthAdapter.saveAccessToken('twitter');
-  };
-  // show the authorization UI and call back the receive PIN function 
-  oAuthAdapter.showAuthorizeUI('https://api.twitter.com/oauth/authorize?' +
-  oAuthAdapter.getRequestToken('https://api.twitter.com/oauth/request_token'), receivePin);
+Ti.include('path/to/sha1.js');
+Ti.include('path/to/oauth.js');
+Ti.include('path/to/oauth-adapter.js');
+Ti.include('path/to/twitter_api.js');
+
+ao.oAuthAdapter = new OAuthAdapterNew(
+ consumerSecret,
+ consumerKey,
+ 'HMAC-SHA1');
+
+ if (ao.oAuthAdapter.isAuthorized() != false) {
+
+// Place API Call Here
 }
 
-//TWEET
-oAuthAdapter.send({
-	url:'https://api.twitter.com/1/statuses/update.json', 
-	parameters:[
-		['status', '@mogyatest test from tmtwit. '+Math.random()]
-	],
-	method:'POST',
-	onSuccess:function(responce){
-		alert('post succeed');
-	}
-});
 
-//get timeline
-oAuthAdapter.send({
-	url:'https://api.twitter.com/1/statuses/home_timeline.json', 
-	parameters:[
-	],
-	method:'GET',
-	onSuccess:function(response){
-		alert('got tweets.see info log.');
-		response = JSON.parse(response);
-		for(var i=0;i<response.length;i++){
-			var tweet = response[i];
-			Ti.API.info(tweet.user.name+':'+tweet.text);
-		}
-	}
-});
-
-
-//
-// new feature
-//
-
-// Google: OAuth for Installed Applications: http://code.google.com/intl/ja/apis/accounts/docs/OAuthForInstalledApps.html
-var adapter = new OAuthAdapter(
-  'anonymous',
-  'anonymous',
-  'HMAC-SHA1'
-);
-adapter.loadAccessToken('google');
-
-if(!adapter.isAuthorized()){
-  var _createMessage = adapter.createMessage;
-  adapter.createMessage = function (){
-    var msg = _createMessage.apply(adapter, arguments);
-    msg.parameters.push(['scope', 'https://www.google.com/m8/feeds https://www.googleapis.com/auth/userinfo#email']);
-    msg.parameters.push(['oauth_callback', 'oob']);
-    msg.parameters.push(['xoauth_displayname', 'Hello World']);
-    msg.parameters.push(['btmpl', 'mobile']);
-    msg.parameters.push(['hl', 'ja']);
-    return msg;
-  };
-  adapter.getRequestToken('https://www.google.com/accounts/OAuthGetRequestToken', function(token){
-    adapter.showAuthorizeUI('https://www.google.com/accounts/OAuthAuthorizeToken?' + token, function (){
-      var indicator = Titanium.UI.createActivityIndicator({
-        message: 'processing...',
-        bottom: 10,
-        height: 50,
-        width: 10,
-        style: Titanium.UI.iPhone.ActivityIndicatorStyle.PLAIN
-      });
-      indicator.show();
-
-      adapter.getAccessToken('https://www.google.com/accounts/OAuthGetAccessToken', function (tk){
-        adapter.saveAccessToken('google');
-        indicator.hide();
-      });
-    });
-  });
-}
-adapter.send({
-  url: 'https://www.googleapis.com/userinfo/email',
-  method: 'GET',
-  parameters: [],
-  stickOAuthParam: true,
-  onSuccess: function (res){
-    Titanium.API.debug(res);
-  },
-  onError: function (){
-    Titanium.API.debug("error");
-  }
-});
 
