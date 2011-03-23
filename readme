@@ -5,14 +5,17 @@ Ti.include('path/to/oauth.js');
 Ti.include('path/to/oauth-adapter.js');
 Ti.include('path/to/twitter_api.js');
 
-ao.oAuthAdapter = new OAuthAdapterNew(
- consumerSecret,
- consumerKey,
- 'HMAC-SHA1');
-
- if (ao.oAuthAdapter.isAuthorized() != false) {
-
-// Place API Call Here
+if (oa.oAuthAdapter.isAuthorized() != false) {
+	oa.oAuthAdapter.send({
+		url:'http://api.twitter.com/1/account/verify_credentials.json', 
+		parameters:[
+		],
+		method:'GET',
+		onSuccess:function(response){
+			response = JSON.parse(response);	
+			alert(response.screen_name+' authenticated');
+		}
+		});
 }
 
 

@@ -1,12 +1,14 @@
 // namespace created for issues with android in the initial oAuth process, need to refactor all code into namespace for all twitter api calls.
- 
-var oa={}
+var oa={};
 (function(){
+	oa.consumerSecret = 'hbwxIfKJxtRjDoVhWx4EcU0a5Kyd4DJYKVrwhsYuPo';
+	oa.consumerKey = 'iXweb1OgfJ7MxBJVEO7EQ';
 	
+	oa.oAuthAdapter = new OAuthAdapterNew(
+	 oa.consumerSecret,
+	 oa.consumerKey,
+	 'HMAC-SHA1');
 })();
-
-var consumerSecret = 'xxxxx';
-var consumerKey = 'xxxxx';
 
 // load the access token for the service (if previously saved)
  oa.oAuthAdapter.loadAccessToken('twitter');
@@ -26,7 +28,7 @@ var consumerKey = 'xxxxx';
 	}; 
 
 	var accessor = {
-        consumerSecret: consumerSecret,
+        consumerSecret: oa.consumerSecret,
         tokenSecret: ''
     };
 
