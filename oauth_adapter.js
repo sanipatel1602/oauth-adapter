@@ -255,13 +255,13 @@ var OAuthAdapterNew = function(pConsumerSecret, pConsumerKey, pSignatureMethod){
 
 	this.returnToken = function(){
 		return this.token;
-	}
+	};
 
     // unloads the UI used to have the user authorize the application
     var destroyAuthorizeUI = function(){
         Ti.API.debug('destroyAuthorizeUI');
         // if the window doesn't exist, exit
-        if (window == null) {
+        if (window === null) {
             return;
         };
 
@@ -312,57 +312,37 @@ var OAuthAdapterNew = function(pConsumerSecret, pConsumerKey, pSignatureMethod){
 		Ti.API.debug(Ti.UI.currentWindow.name);
         return destroyAuthorizeUI();
       }
+	// Twitter oAuth process
       if('https://api.twitter.com/oauth/authorize' == loc){
 		 	Ti.API.debug('Twitter Authorisation');
-		setTimeout(function(){
-			var sourceCode = webView.evalJS("document.documentElement.innerHTML");
 			setTimeout(function(){
-				Ti.API.debug(sourceCode);
-				var reg = /(<code\b[^>]*>)([0-9]+)(<\/code>)/gi;
-				var ar = reg.exec(sourceCode);
-				// var pinMatch = sourceCode.match();
-				Ti.API.info(ar[2]+ ' array match');
-				Ti.API.info(ar+ ' full match');
+				var sourceCode = webView.evalJS("document.documentElement.innerHTML");
+				setTimeout(function(){
+					Ti.API.debug(sourceCode);
+					var reg = /(<code\b[^>]*>)([0-9]+)(<\/code>)/gi;
+					var ar = reg.exec(sourceCode);
+					// var pinMatch = sourceCode.match();
+					Ti.API.info(ar[2]+ ' array match');
+					Ti.API.info(ar+ ' full match');
+						if( ar[2] ){
+							pin = ar[2];
+							Ti.API.info('Found PIN');
+						}
+						Ti.API.debug('PIN: '+ pin);
+						if(pin != ''){
+							if (receivePinCallback) setTimeout(receivePinCallback, 300);
+							var osname = Ti.Platform.osname; // cache information
+							if(osname === 'android') {
+								window.close();
+								Ti.API.debug('Android Window destruction');
+							}
+							destroyAuthorizeUI();
+						}
+						},1000); // End of pin timeout
+					},500); // End of main timout loop
 				
-					if( ar[2] ){
-									      		pin = ar[2];
-									Ti.API.info('Found PIN');
-								}
-								Ti.API.debug('PIN: '+ pin);
-									        if(pin != ''){
-									if (receivePinCallback) setTimeout(receivePinCallback, 300);
-									var osname = Ti.Platform.osname; // cache information
-									if(osname === 'android') {
-										window.close();
-										Ti.API.debug('Android Window destruction');
-									}
-									        	destroyAuthorizeUI();
-									        }
-							
-				
-				
-			},1000);
-			
-		},500);
-			// if(Ti.Platform.name === 'android')	var sourceCode = browser.evalJS("document.getElementsByTagName('body').innerHTML");
-			
-	
 				var val = webView.evalJS("document.getElementsByTagName('code').innerHTML");
 				Ti.API.info(val);
-				// if( val ){
-				// 		      		pin = val;
-				// 		Ti.API.info('Found PIN');
-				// 	}
-				// 	Ti.API.debug('PIN: '+ pin);
-				// 		        if(pin != ''){
-				// 		if (receivePinCallback) setTimeout(receivePinCallback, 300);
-				// 		var osname = Ti.Platform.osname; // cache information
-				// 		if(osname === 'android') {
-				// 			window.close();
-				// 			Ti.API.debug('Android Window destruction');
-				// 		}
-				// 		        	destroyAuthorizeUI();
-				// 		        }
 	      }
     };
 
@@ -410,7 +390,7 @@ var OAuthAdapterNew = function(pConsumerSecret, pConsumerKey, pSignatureMethod){
             scalesPageToFit: true,
             touchEnabled: true,
             top: 0,
-            border: 10,
+            border: 10
             // backgroundColor: 'white',
             // borderColor: '#aaa',
             // borderRadius: 20,
@@ -597,17 +577,17 @@ Ti.API.debug('access Tokens: ' + accessToken + ':' + accessTokenSecret);
           if (('' + client.status).match(/^20[0-9]/)) {
             if(params.onSuccess){
               params.onSuccess(client.responseText);
-			  return client.responseText
-            }
+			  return client.responseText;
+            };
           } else {
             if(params.onError){
 			var errorResponse = {
 				errorMessage: JSON.parse(client.responseText).error,
 				errorStatus: client.status
-			}
+			};
               params.onError(errorResponse);
-			  return client.responseText
-            }
+			  return client.responseText;
+            };
           }
         };
 		var finalUrl = OAuth.addToURL(pUrl, parameterMap);
@@ -621,7 +601,7 @@ Ti.API.debug('access Tokens: ' + accessToken + ':' + accessTokenSecret);
         } else {
 		client.setRequestHeader('Content-Type',"application/x-www-form-urlencoded");
 		}
-		 
+		 ;
         client.send();
 		Ti.API.debug('Request Sent');
         return client.responseText;
