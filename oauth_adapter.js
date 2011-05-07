@@ -263,7 +263,7 @@ var OAuthAdapterNew = function(pConsumerSecret, pConsumerKey, pSignatureMethod){
         // if the window doesn't exist, exit
         if (window == null) {
             return;
-        }
+        };
 
         // remove the UI
         try {
@@ -314,22 +314,55 @@ var OAuthAdapterNew = function(pConsumerSecret, pConsumerKey, pSignatureMethod){
       }
       if('https://api.twitter.com/oauth/authorize' == loc){
 		 	Ti.API.debug('Twitter Authorisation');
-				var val = webView.evalJS("document.getElementById('oauth_pin').innerHTML");
-				       if( val ){
-				         pin = val;
-						Ti.API.info('Found PIN');
-						}
-				Ti.API.debug('PIN: '+ pin);
-
-	        if(pin != ''){
-				if (receivePinCallback) setTimeout(receivePinCallback, 300);
-				var osname = Ti.Platform.osname; // cache information
-				if(osname === 'android') {
-					window.close();
-					Ti.API.debug('Android Window destruction');
-				}
-	        	destroyAuthorizeUI();
-	        }
+		setTimeout(function(){
+			var sourceCode = webView.evalJS("document.documentElement.innerHTML");
+			setTimeout(function(){
+				Ti.API.debug(sourceCode);
+				var reg = /(<code\b[^>]*>)([0-9]+)(<\/code>)/gi;
+				var ar = reg.exec(sourceCode);
+				// var pinMatch = sourceCode.match();
+				Ti.API.info(ar[2]+ ' array match');
+				Ti.API.info(ar+ ' full match');
+				
+					if( ar[2] ){
+									      		pin = ar[2];
+									Ti.API.info('Found PIN');
+								}
+								Ti.API.debug('PIN: '+ pin);
+									        if(pin != ''){
+									if (receivePinCallback) setTimeout(receivePinCallback, 300);
+									var osname = Ti.Platform.osname; // cache information
+									if(osname === 'android') {
+										window.close();
+										Ti.API.debug('Android Window destruction');
+									}
+									        	destroyAuthorizeUI();
+									        }
+							
+				
+				
+			},1000);
+			
+		},500);
+			// if(Ti.Platform.name === 'android')	var sourceCode = browser.evalJS("document.getElementsByTagName('body').innerHTML");
+			
+	
+				var val = webView.evalJS("document.getElementsByTagName('code').innerHTML");
+				Ti.API.info(val);
+				// if( val ){
+				// 		      		pin = val;
+				// 		Ti.API.info('Found PIN');
+				// 	}
+				// 	Ti.API.debug('PIN: '+ pin);
+				// 		        if(pin != ''){
+				// 		if (receivePinCallback) setTimeout(receivePinCallback, 300);
+				// 		var osname = Ti.Platform.osname; // cache information
+				// 		if(osname === 'android') {
+				// 			window.close();
+				// 			Ti.API.debug('Android Window destruction');
+				// 		}
+				// 		        	destroyAuthorizeUI();
+				// 		        }
 	      }
     };
 

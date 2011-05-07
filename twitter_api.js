@@ -3,8 +3,6 @@ var oa={};
 (function(){
 	oa.consumerSecret = 'xxxxx';
 	oa.consumerKey = 'xxxxx';
-	
-	
 })();
 
 oa.oAuthAdapter = new OAuthAdapterNew(
@@ -35,8 +33,8 @@ oa.oAuthAdapter = new OAuthAdapterNew(
     };
 
 	accessor.tokenSecret = '';
-    var toaURL = 'https://api.twitter.com/oauth/request_token';
-    var message = oa.oAuthAdapter.createMessage(toaURL, 'POST');
+    var message = oa.oAuthAdapter.createMessage('https://api.twitter.com/oauth/request_token', 'POST');
+Ti.API.info('message is '+ message);
 	OAuth.setTimestampAndNonce(message);
 	OAuth.setParameter(message, "oauth_timestamp", OAuth.timestamp());
 	OAuth.SignatureMethod.sign(message, accessor);
@@ -62,8 +60,7 @@ oa.oAuthAdapter = new OAuthAdapterNew(
 		},4000);
 		
 		} catch(e){
-			Ti.API.debug('onload function error '+ e)
-			alert(e);
+			alert(E);
 		}
 	};
 	Ti.API.debug(finalUrl+ ' Is the finalURL for auth step 1');
@@ -71,4 +68,6 @@ oa.oAuthAdapter = new OAuthAdapterNew(
 	client.setRequestHeader('X-Requested-With',null);
 	// client.setTimeout(3000);
     client.send();	
+	// have to use a settimeout function to allow ANDROID to get the return value to pass onto the next function.
+	
 }
