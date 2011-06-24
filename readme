@@ -14,7 +14,9 @@ if (oa.oAuthAdapter.isAuthorized() != false) {
 		onSuccess:function(response){
 			response = JSON.parse(response);	
 			alert(response.screen_name+' authenticated');
-		}
+		},
+		onError:function(response){
+				alert(response.errorMessage),
 		});
 }
 

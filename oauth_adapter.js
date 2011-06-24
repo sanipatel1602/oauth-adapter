@@ -562,14 +562,15 @@ Ti.API.debug('access Tokens: ' + accessToken + ':' + accessTokenSecret);
             Ti.API.debug('url for GET:' + pUrl);
         }
 		var client = Ti.Network.createHTTPClient();
-		Ti.API.debug('Network client setup');
-		
+		Ti.API.info('Network client for sending oAuth POST/GET request');
+		client.setTimeout(25000);
         client.onerror = function(e){
-	Ti.API.debug('Error Found');
-          Ti.API.debug(e);
-          if(params.onError){
-            params.onError(e);
-          }
+			Ti.API.debug('Error Returned from Server');
+			Ti.API.debug('Status:'+client.status);
+			Ti.API.debug(e);
+			if(params.onError){
+				params.onError(e);
+			}
         };
         client.onload = function(){
 		Ti.API.info('connection load');
@@ -577,22 +578,29 @@ Ti.API.debug('access Tokens: ' + accessToken + ':' + accessTokenSecret);
           if (('' + client.status).match(/^20[0-9]/)) {
             if(params.onSuccess){
               params.onSuccess(client.responseText);
-			  return client.responseText;
+				var httpResponse = {
+					successMessage: 'Success',
+					httpStatus: client.status,
+					responseText: client.responseText
+				}
+			  return httpResponse;
             };
           } else {
             if(params.onError){
-			var errorResponse = {
+			var httpResponse = {
 				errorMessage: JSON.parse(client.responseText).error,
-				errorStatus: client.status
+				httpStatus: client.status,
+				responseText: client.responseText
 			};
-              params.onError(errorResponse);
-			  return client.responseText;
+			Ti.API.debug(httpResponse);
+              params.onError(httpResponse);
+			  return httpResponse;
             };
           }
         };
 		var finalUrl = OAuth.addToURL(pUrl, parameterMap);
         client.open(pMethod, finalUrl, false);
-		Ti.API.debug('Connection Opened');
+		Ti.API.info('oAuth POST/GET request connection Opened');
         if(stickOAuthParam){ // Google Auth
           var header = makeHeaderParam(parameterMap);
 
@@ -603,7 +611,7 @@ Ti.API.debug('access Tokens: ' + accessToken + ':' + accessTokenSecret);
 		}
 		 ;
         client.send();
-		Ti.API.debug('Request Sent');
+		Ti.API.info('oAuth POST/GET request Sent to network service');
         return client.responseText;
     };
     this.send = send;
