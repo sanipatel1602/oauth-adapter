@@ -158,7 +158,7 @@ var OAuthAdapterNew = function(pConsumerSecret, pConsumerKey, pSignatureMethod){
         Ti.API.debug('Loading access token: done [accessToken:' + accessToken + '][accessTokenSecret:' + accessTokenSecret + '].');
     };
     this.saveAccessToken = function(params){
-	Ti.API.debug('Params [' + JSON.stringify(params)+ '].');
+		Ti.API.debug('Params [' + JSON.stringify(params)+ '].');
 		var responseParams = OAuth.getParameterMap(params);
 		Ti.API.debug('Params [' + JSON.stringify(responseParams)+ '].');
 		accessToken = responseParams.oauth_token;
@@ -587,11 +587,11 @@ Ti.API.debug('access Tokens: ' + accessToken + ':' + accessTokenSecret);
             };
           } else {
             if(params.onError){
-			var httpResponse = {
-				errorMessage: JSON.parse(client.responseText).error,
-				httpStatus: client.status,
-				responseText: client.responseText
-			};
+				var httpResponse = {
+					errorMessage: JSON.parse(client.responseText).error,
+					httpStatus: client.status,
+					responseText: client.responseText
+				};
 			Ti.API.debug(httpResponse);
               params.onError(httpResponse);
 			  return httpResponse;
